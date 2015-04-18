@@ -20,7 +20,7 @@
 #include <NfcAdapter.h>
 #include <Ndef.h>
 
-#define IS_DEBUG           0
+#define IS_DEBUG           1
 #define VERSION_CHECKER    0
 #define TEST_TAG           0
 #define TEST_SNEP          1
@@ -52,12 +52,14 @@ NfcAdapter nfc(pn532);
 SNEP nfc(pn532);
 #endif
 
+#if VERSION_CHECKER
 uint8_t pb[256];
+#endif
 
 void checkVersion();
 void scanTag();
 #if TEST_SNEP
-void doP2P();
+void doSNEP();
 #endif
 
 void setup(void) {
@@ -71,7 +73,7 @@ void setup(void) {
   MSGPRINT(F("----------------- NFC RESEARCH --------------------\n"));
   
   #if TEST_SNEP
-  MSGPRINT(F("    ~ P2P TESTING ~\n"));
+  MSGPRINT(F("P2P TESTING\n"));
   #endif
   
   #if !TEST_SNEP
@@ -96,7 +98,7 @@ void loop(void)
   #endif
   
   #if TEST_SNEP
-  doP2P();
+  doSNEP();
   #endif
   
   delay(1000);
@@ -105,44 +107,84 @@ void loop(void)
 
 #if TEST_SNEP
 uint8_t ndefBuf[128];
+bool retry = false;
 
-void doP2P(){
+uint8_t paySign[2] = {'P',':'};
+
+bool isToPay(){
+  uint32_t i = 0;
+  while (Serial.available() > 0){
+    if (Serial.read() != paySign[i++])
+      return false;
+    else if (i == sizeof(paySign))
+      return true;
+  }
+  return false;
+} 
+
+void doSNEP(){
 #if 1
-    Serial.println("Send a message to Android");
 
-    NdefMessage message = NdefMessage();
+  if (isToPay()){
+    retry = true;
     
-    char tmp[100];
-    sprintf(tmp, "http://www.ansvia.com?r=%d", abs(random(1000)));
+    char buf[64];
+    memset(&buf, 0, 64);
     
-    message.addUriRecord(String(tmp));
-    
-    int messageSize = message.getEncodedSize();
-    if (messageSize > sizeof(ndefBuf)) {
-        Serial.println("ndefBuf is too small");
-        while (1) {
-        }
-
+    for (uint8_t i = 0; Serial.available() > 0; i++){
+      buf[i] = Serial.read();
     }
+    
+    uint32_t retried = 0;
+    
+    while (retry && retried < 7){
+      DMSG(retried + 1);DMSG(". ");
+      DMSG(F("Send a message to Android: "));
+      DMSG(buf);
 
-    message.encode(ndefBuf);
-    if (0 >= nfc.write(ndefBuf, messageSize, 5000)) {
-        Serial.println("Failed");
-    } else {
-        Serial.println("Success");
+      NdefMessage message = NdefMessage();
+    
+      char tmp[100];
+      //sprintf(tmp, "http://www.ansvia.com?r=%d", abs(random(1000)));
+      sprintf(tmp, "http://www.ansvia.com?r=%s", buf);
+    
+      message.addUriRecord(String(tmp));
+      
+      int messageSize = message.getEncodedSize();
+      if (messageSize > sizeof(ndefBuf)) {
+          MSGERROR(F("ndefBuf is too small\n"));
+          while (1) {
+          }
+  
+      }
+  
+      message.encode(ndefBuf);
+      if (0 >= nfc.write(ndefBuf, messageSize, 5000)) {
+        retry = true;
+        retried++;
+        MSGERROR(F(" Failed\n"));
+      } else {
+        retry = false;
+        MSGPRINT(F(" Success\n"));
         delay(3000);
+      }
     }
+    if (retried >= 7)
+      DMSG(F("timeout."));
+    
+    
+  }
 
 #else
-    Serial.println("Get a message from Android");
-    int msgSize = nfc.read(ndefBuf, sizeof(ndefBuf));
+    DMSG(F("Get a message from Android"));
+    int msgSize = nfc.read(ndefBuf, sizeof(ndefBuf), 3000);
     if (msgSize > 0) {
         NdefMessage msg  = NdefMessage(ndefBuf, msgSize);
         msg.print();
-        Serial.println("\nSuccess");
+        DMSG("\nSuccess");
         delay(3000);
     } else {
-        Serial.println("failed");
+        MSGPRINT(F("failed\n"));
     }
 #endif
 }
