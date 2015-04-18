@@ -20,7 +20,7 @@
 #include <NfcAdapter.h>
 #include <Ndef.h>
 
-#define IS_DEBUG           1
+#define IS_DEBUG           0
 #define VERSION_CHECKER    0
 #define TEST_TAG           0
 #define TEST_SNEP          1
@@ -64,8 +64,10 @@ void setup(void) {
   
   #if !UNO
   Serial.begin(115200);
+  #if IS_DEBUG
   while(!Serial);
-  #endif
+  #endif // IS_DEBUG
+  #endif // !UNO
   MSGPRINT(F("----------------- NFC RESEARCH --------------------\n"));
   
   #if TEST_SNEP
