@@ -282,16 +282,18 @@ void doSNEP(){
         
         // temporary send dummy ack
         //
-        delay(3000);
+        delay(2000);
         
         // dapatkan data dari opposite PN532
-        int msgSize = nfc.read(ndefBuf, sizeof(ndefBuf), 60000);
+        memset(&ndefBuf, 0, 128);
+        
+        int msgSize = nfc.read(ndefBuf, 128, 60000);
         if (msgSize > 0) {
             NdefMessage msg = NdefMessage(ndefBuf, msgSize);
-            //msg.print();
+            msg.print();
 
-            byte payload[128];
-            memset(&payload, 0, 128);
+            byte payload[256];
+            memset(&payload, 0, 250);
             
             msg.getRecord(0).getPayload((byte*)&payload);
             
@@ -304,9 +306,9 @@ void doSNEP(){
             #if USING_LCD
             clearLcdLine(1);
             lcd.setCursor(0,0);
-            lcd.print("PAYMENT SUCCESS ");
+            lcd.print(F("PAYMENT SUCCESS "));
             lcd.setCursor(0,1);
-            lcd.print("   THANK YOU    ");
+            lcd.print(F("   THANK YOU    "));
             #endif
             
             DMSG("\nSuccess");
@@ -393,10 +395,11 @@ void scanTag(){
     DMSG("trying to write...\n");
     NdefMessage ndef = NdefMessage();
     
-    char tmp[100];
-    sprintf(tmp, "http://www.ansvia.com?r=%d", random(1, 100000));
+    //char tmp[100];
+    //sprintf(tmp, "http://www.ansvia.com?r=%d", random(1, 100000));
     
-    ndef.addUriRecord(tmp);
+    //ndef.addUriRecord(tmp);
+    ndef.addTextRecord("http://www.activexperts.com/sms-component/smpp-specifications/pdu-type-format-definitions/aaaabbbbbbccccccccdddddddeeeeeeeffffffggggghhhhhiiijjjk");
     if (nfc.write(ndef)){
       DMSG("success writing to tag\n");
     }else{
