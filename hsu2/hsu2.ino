@@ -25,7 +25,8 @@
 #define VERSION_CHECKER    0
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
-#define TEST_SNEP          1
+#define TEST_SNEP          0
+#define TEST_HCE           1
 #define USING_LCD          1
 #define LCD_8X2            0
 #define LCD_16X2           1
