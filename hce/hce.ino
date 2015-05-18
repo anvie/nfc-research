@@ -1,5 +1,5 @@
 
-#include "PN532.h"
+#include <PN532.h>
 #include "PN532_HSU.h"
 #include "emulatetag.h"
 #include "NdefMessage.h"

@@ -290,7 +290,7 @@ void doSNEP(){
         int msgSize = nfc.read(ndefBuf, 128, 60000);
         if (msgSize > 0) {
             NdefMessage msg = NdefMessage(ndefBuf, msgSize);
-            msg.print();
+            //msg.print();
 
             byte payload[256];
             memset(&payload, 0, 250);
