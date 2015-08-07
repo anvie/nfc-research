@@ -24,7 +24,7 @@
 #define UNO                1
 #define USING_I2C          1
 #define IS_DEBUG           1
-#define VERSION_CHECKER    0
+#define VERSION_CHECKER    1
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
 #define TEST_SNEP          0
@@ -120,9 +120,14 @@ void setup(void) {
   #if !TEST_SNEP
   pn532.begin();
   pn532.wakeup();
+  #endif
 
   nfc.begin();
-  #endif
+
+  // Set the max number of retry attempts to read from a card
+  // This prevents us from waiting forever for a card, which is
+  // the default behaviour of the PN532.
+  nfc.setPassiveActivationRetries(0xFF);
   
   #if USING_LED
   #if UNO
@@ -130,14 +135,13 @@ void setup(void) {
   #endif
   #endif
   
-  
-  #if VERSION_CHECKER
-  checkVersion();
-  #endif
-  
   #if TEST_HCE
     // configure board to read RFID tags
     nfc.SAMConfig();
+  #endif
+
+  #if VERSION_CHECKER
+  checkVersion();
   #endif
   
   #if USING_LCD
@@ -567,28 +571,42 @@ void scanTag(){
 
 #if VERSION_CHECKER
 void checkVersion(){
-  pb[0] = 0x02;
+//  pb[0] = 0x02;
+//  
+//  // get firmware version
+//  MSGPRINT(F("get firmware version...\n"));
+//  pn532.writeCommand((const uint8_t*)&pb, 1, (const uint8_t*)&pb, 0);
+//  
+//  pn532.readResponse(pb, 120, 3000);
+//  
+//  //PrintHex((const byte*)pb, 6);
+//  
+//  #if !UNO
+//  // Got ok data, print it out!
+//  MSGPRINT(F("  Found chip PN5")); 
+//  MSGPRINT_printHex((uint8_t)pb[0]);
+//  MSGPRINT("\n");
+//  MSGPRINT(F("  Firmware ver. ")); 
+//  MSGPRINT_DEC(pb[1]);
+//  MSGPRINT('.'); 
+//  MSGPRINT_DEC(pb[2]);NL;
+//  MSGPRINT(F("  Supports ")); 
+//  MSGPRINT_HEX((uint8_t)pb[3]);NL;
+//  #endif
+
+
+  uint32_t versiondata = nfc.getFirmwareVersion();
+  if (!versiondata) {
+    Serial.print("Didn't find PN53x board");
+    while (1); // halt
+  }
   
-  // get firmware version
-  MSGPRINT(F("get firmware version...\n"));
-  pn532.writeCommand((const uint8_t*)&pb, 1, (const uint8_t*)&pb, 0);
-  
-  pn532.readResponse(pb, 120, 3000);
-  
-  //PrintHex((const byte*)pb, 6);
-  
-  #if !UNO
   // Got ok data, print it out!
-  MSGPRINT(F("  Found chip PN5")); 
-  MSGPRINT_printHex((uint8_t)pb[0]);
-  MSGPRINT("\n");
-  MSGPRINT(F("  Firmware ver. ")); 
-  MSGPRINT_DEC(pb[1]);
-  MSGPRINT('.'); 
-  MSGPRINT_DEC(pb[2]);NL;
-  MSGPRINT(F("  Supports ")); 
-  MSGPRINT_HEX((uint8_t)pb[3]);NL;
-  #endif
+  Serial.print("Found chip PN5"); Serial.println((versiondata>>24) & 0xFF, HEX); 
+  Serial.print("Firmware ver. "); Serial.print((versiondata>>16) & 0xFF, DEC); 
+  Serial.print('.'); Serial.println((versiondata>>8) & 0xFF, DEC);
+  
+
 }
 #endif
 
