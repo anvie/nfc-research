@@ -4,8 +4,14 @@
 #include <PN532.h>
 
 //PN532_SPI pn532spi(SPI, 10);
-PN532_HSU pn532spi(Serial1);
-PN532 nfc(pn532spi);
+//PN532_HSU pn532hsu(Serial1);
+//PN532 nfc(pn532hsu);
+
+#include <Wire.h>
+#include <PN532_I2C.h>
+
+PN532_I2C pn532i2c(Wire);
+PN532 nfc(pn532i2c);
 
 
 void setup()
