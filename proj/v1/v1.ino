@@ -21,8 +21,8 @@
 #include <PN532Interface.h>
 #include <Ndef.h>
 
-#define UNO                1
-#define USING_I2C          1
+#define UNO                0
+#define USING_I2C          0
 #define IS_DEBUG           1
 #define VERSION_CHECKER    1
 #define TEST_TAG           0
@@ -93,6 +93,25 @@ void dim_led(uint16_t led_num, uint16_t count);
 #endif
 
 void setup(void) {
+
+
+  #if USING_LCD
+  pinMode(2, OUTPUT);
+  pinMode(3, OUTPUT);
+  
+  digitalWrite(2, HIGH);
+  digitalWrite(3, HIGH);
+  
+  #if LCD_8X2
+  lcd.begin(8, 2);
+  #elif LCD_16X2
+  lcd.begin(16, 2);
+  #endif
+  
+  lcd.setCursor(0,0);
+  lcd.print("STARTING...");
+  #endif
+
   
   #if !UNO || USING_I2C
   Serial.begin(115200);
@@ -145,19 +164,6 @@ void setup(void) {
   #endif
   
   #if USING_LCD
-  pinMode(2, OUTPUT);
-  pinMode(3, OUTPUT);
-  
-  digitalWrite(2, HIGH);
-  digitalWrite(3, HIGH);
-  
-  #if LCD_8X2
-  lcd.begin(8, 2);
-  #elif LCD_16X2
-  lcd.begin(16, 2);
-  #endif
-  
-  lcd.setCursor(0,0);
   lcd.print("~  XIPP READY  ~");
   #endif
 
