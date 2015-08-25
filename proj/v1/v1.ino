@@ -22,8 +22,8 @@
 #include <Ndef.h>
 
 #define UNO                0
-#define USING_I2C          0
-#define IS_DEBUG           1
+#define USING_I2C          1
+#define IS_DEBUG           0
 #define VERSION_CHECKER    1
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
@@ -32,8 +32,8 @@
 #define USING_LCD          1
 #define LCD_8X2            0
 #define LCD_16X2           1
-#define USING_LED          0
-
+#define USING_LED          1
+#define LED_PIN            9
 
 #include <debug.h>
 
@@ -60,15 +60,20 @@ LiquidCrystal lcd(15, 14, 16, 4, 5, 6, 7);
 // RXD            -->      Serial1-TX
 // TXD            -->      Serail1-RX
 /** Serial1 can be  */
-#if UNO
-  #if USING_I2C
-    PN532_I2C pn532(Wire);
-  #else
-    PN532_HSU pn532(Serial);
-  #endif
-  
+//#if UNO
+//  #if USING_I2C
+//    PN532_I2C pn532(Wire);
+//  #else
+//    PN532_HSU pn532(Serial);
+//  #endif
+//#else
+//    PN532_HSU pn532(Serial1);
+//#endif
+
+#if USING_I2C
+  PN532_I2C pn532(Wire);
 #else
-    PN532_HSU pn532(Serial1);
+  PN532_HSU pn532(Serial);
 #endif
 
 #if TEST_SNEP
@@ -96,11 +101,11 @@ void setup(void) {
 
 
   #if USING_LCD
-  pinMode(2, OUTPUT);
-  pinMode(3, OUTPUT);
-  
-  digitalWrite(2, HIGH);
-  digitalWrite(3, HIGH);
+//  pinMode(2, OUTPUT);
+//  pinMode(3, OUTPUT);
+//  
+//  digitalWrite(2, HIGH);
+//  digitalWrite(3, HIGH);
   
   #if LCD_8X2
   lcd.begin(8, 2);
@@ -110,7 +115,19 @@ void setup(void) {
   
   lcd.setCursor(0,0);
   lcd.print("STARTING...");
+
+  #if IS_DEBUG
+  lcd.setCursor(0,1);
+  lcd.print("DEBUG MODE");
   #endif
+  #endif // USING_LCD
+
+
+  #if USING_LED
+  pinMode(LED_PIN, OUTPUT);
+  dim_led(LED_PIN,3);
+  delay(500);
+  #endif // USING_LED
 
   
   #if !UNO || USING_I2C
@@ -128,7 +145,6 @@ void setup(void) {
   // digunakan untuk indikasi kalo ada mobile device approach
   pinMode(9, OUTPUT);
   #endif
-  
   
   MSGPRINT(F("----------------- NFC RESEARCH --------------------\n"));
   
@@ -164,11 +180,38 @@ void setup(void) {
   #endif
   
   #if USING_LCD
+  clearLcd();
   lcd.print("~  XIPP READY  ~");
   #endif
 
 
+
 }
+
+#if USING_LCD
+void clearLcd(){
+  lcd.setCursor(0,0);
+  lcd.print(F("                "));
+  lcd.setCursor(0,1);
+  lcd.print(F("                "));
+  lcd.setCursor(0,0);
+}
+#endif
+
+#if USING_LED
+void standbyLed(){
+  for (int i=0;i<255;i++){
+    analogWrite(LED_PIN, (byte)i);
+    delay(1);
+  }
+  delay(350);
+  for (int i=255;i>1;i--){
+    analogWrite(LED_PIN, (byte)i);
+    delay(3);
+  }
+  digitalWrite(LED_PIN, 0);
+}
+#endif
 
 uint8_t ping_sign[4] = {'X','I','P','P'};
 
@@ -185,6 +228,10 @@ bool is_ping_sign(){
 
 void loop(void) 
 {
+
+  #if USING_LED
+  standbyLed();
+  #endif
   
   if (is_ping_sign()){
     Serial.println("XIPP\n");
