@@ -1,18 +1,11 @@
 
 
 /**
- * This example demonstrates pushing a NDEF message from Arduino + NFC Shield to Android 4.0+ device
- *
- * This demo does not support UNO, because UNO board has only one HardwareSerial.
- * Do not try to use SoftwareSerial to control PN532, it won't work. 
- * SotfwareSerial is not fast and stable enough.
- * 
- * This demo only supports the Arduino board which has at least 2 Serial, 
- * Like Leonard(1 USB serial and 1 Hardware serial), Mega ect.
- *
- * Make sure your PN532 board is in HSU(High Speed Uart) mode.
- *
- * This demo is tested with Leonard.
+ * Project version 1.
+ * tested on
+ *       Pro Micro with
+ *       Elechosue NFC module V3 with
+ *       LCD 16x2
  */
 
 #include <PN532.h>
@@ -448,6 +441,8 @@ void clearLcdLine(int num){
 //#endif
 
 #if TEST_HCE
+static uint8_t END_OF_DATA[] = {0x90, 0x90};
+
 void doHCE(){
 
   if (isToPay()) {
@@ -540,6 +535,7 @@ void doHCE(){
             DMSG(len);
             DMSG(F(", chunking for "));
             int loopCount = len / 23;
+            size_t remainBytesCount = len % 23;
             DMSG(loopCount);
             DMSG(F(" chunks\n"));
             int i=0;
@@ -548,20 +544,22 @@ void doHCE(){
               DMSG("chunk ");
               DMSG(i + 1);
               DMSG("\n");
-              size_t sz = strlen((const char*)chunk);
-              if (sz > 23){
-                sz = 23;
-              }
-              success = nfc.inDataExchange(chunk, sz, response, &responseLength);  
+//              size_t sz = strlen((const char*)chunk);
+//              if (sz > 23){
+//                sz = 23;
+//              }
+              success = nfc.inDataExchange(chunk, 23, response, &responseLength);  
             }
             // kirim sisanya
-            uint8_t* chunk = (uint8_t*)&buf[i * 23];
-            success = nfc.inDataExchange(chunk, strlen((const char*)chunk), response, &responseLength);
-            // kirim penanda kalau sudah selesai
-            uint8_t eof[] = {0x90, 0x90};
-            success = nfc.inDataExchange(eof, 2, response, &responseLength);
+            //size_t = sz = strlen((const char*)chunk);
+            if (remainBytesCount > 0){
+              uint8_t* chunk = (uint8_t*)&buf[i * 23];
+              success = nfc.inDataExchange(chunk, remainBytesCount, response, &responseLength);
+            }
         }
         
+        // kirim penanda kalau sudah selesai
+        success = nfc.inDataExchange(END_OF_DATA, 2, response, &responseLength);
         
         
         DMSG(F("Android response #2: ("));
