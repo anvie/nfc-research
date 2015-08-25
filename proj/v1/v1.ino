@@ -23,7 +23,7 @@
 
 #define UNO                0
 #define USING_I2C          1
-#define IS_DEBUG           1
+#define IS_DEBUG           0
 #define VERSION_CHECKER    1
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
@@ -457,9 +457,9 @@ void doHCE(){
     uint8_t responseLength = 32;
 
     //get payment data from serial
-    char buf[64];
+    char buf[80];
 
-    memset(&buf, 0, 64);
+    memset(&buf, 0, 80);
 
     size_t n = 0;
 
@@ -512,6 +512,8 @@ void doHCE(){
         #if USING_LED
         dim_led(LED_PIN, 3);
         #endif
+
+        delay(100);
         
         DMSG(F("Android response #1: ("));
         DMSG(responseLength);
@@ -528,8 +530,39 @@ void doHCE(){
         DMSG(":\n");
         DMSG(buf);
         DMSG("\n");
+
+        int len = strlen(buf);
+
+        if (len < 24){
+            success = nfc.inDataExchange((uint8_t*)&buf, len, response, &responseLength);  
+        }else{
+            DMSG(F("data is more than 24 bytes, "));
+            DMSG(len);
+            DMSG(F(", chunking for "));
+            int loopCount = len / 23;
+            DMSG(loopCount);
+            DMSG(F(" chunks\n"));
+            int i=0;
+            for (i=0; i<loopCount; i++){
+              uint8_t* chunk = (uint8_t*)&buf[i * 23];
+              DMSG("chunk ");
+              DMSG(i + 1);
+              DMSG("\n");
+              size_t sz = strlen((const char*)chunk);
+              if (sz > 23){
+                sz = 23;
+              }
+              success = nfc.inDataExchange(chunk, sz, response, &responseLength);  
+            }
+            // kirim sisanya
+            uint8_t* chunk = (uint8_t*)&buf[i * 23];
+            success = nfc.inDataExchange(chunk, strlen((const char*)chunk), response, &responseLength);
+            // kirim penanda kalau sudah selesai
+            uint8_t eof[] = {0x90, 0x90};
+            success = nfc.inDataExchange(eof, 2, response, &responseLength);
+        }
         
-        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
+        
         
         DMSG(F("Android response #2: ("));
         DMSG(responseLength);
@@ -537,6 +570,8 @@ void doHCE(){
         #if IS_DEBUG
         nfc.PrintHexChar(response, responseLength);
         #endif
+
+        delay(100);
         
         int a = 1;
         responseLength = 30;
