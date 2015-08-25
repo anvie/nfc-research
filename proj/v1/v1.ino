@@ -23,7 +23,7 @@
 
 #define UNO                0
 #define USING_I2C          1
-#define IS_DEBUG           0
+#define IS_DEBUG           1
 #define VERSION_CHECKER    1
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
@@ -180,15 +180,21 @@ void setup(void) {
   #endif
   
   #if USING_LCD
-  clearLcd();
-  lcd.print("~  XIPP READY  ~");
+  setReady();
   #endif
 
 
 
 }
 
+
 #if USING_LCD
+
+void setReady(){
+  clearLcd();
+  lcd.print("~  XIPP READY  ~");
+}
+
 void clearLcd(){
   lcd.setCursor(0,0);
   lcd.print(F("                "));
@@ -502,9 +508,30 @@ void doHCE(){
       success = nfc.inDataExchange(selectApdu, sizeof(selectApdu), response, &responseLength);
       
       if(success) {
-        
+
+        #if USING_LED
+        dim_led(LED_PIN, 3);
+        #endif
         
         DMSG(F("Android response #1: ("));
+        DMSG(responseLength);
+        DMSG(") ");
+        #if IS_DEBUG
+        nfc.PrintHexChar(response, responseLength);
+        #endif
+
+        responseLength = 74;
+        memset(response, 0, sizeof(response));
+
+        DMSG(F("Sending to guest with length "));
+        DMSG(strlen(buf));
+        DMSG(":\n");
+        DMSG(buf);
+        DMSG("\n");
+        
+        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
+        
+        DMSG(F("Android response #2: ("));
         DMSG(responseLength);
         DMSG(") ");
         #if IS_DEBUG
@@ -520,6 +547,11 @@ void doHCE(){
          /* do loop execution */
          do
          {
+
+            #if USING_LED
+            dim_led(LED_PIN, 3);
+            #endif
+          
             memset(response, 0, sizeof(response));
         
             success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), response, &responseLength);
@@ -558,16 +590,22 @@ void doHCE(){
             }
             respBuff[ii-1] = 0x00;
             String responseString = String((const char*)respBuff);
-            Serial.print(responseString);
-            
-            if(responseString.indexOf("^END") > -1) {
-              
-              //response[strlen((char*)&response)-1] = 0x00;
-              
-              //Serial.println("DONE|" + String((const char*)response));
 
-              Serial.print("\r\n");
+            bool ending = responseString.indexOf("^END") > -1;
+
+            if(ending) {
+              Serial.println(responseString);
+            }else{
+              Serial.print(responseString);
+            }
+            
+            if(ending) {
+
+              delay(100);
+
+              Serial.flush();
               Serial.println("-----END-----");
+              Serial.flush();
               
               #if USING_LCD
               clearLcdLine(1);
@@ -575,6 +613,8 @@ void doHCE(){
               lcd.print(F("PAYMENT SUCCESS "));
               lcd.setCursor(0,1);
               lcd.print(F("   THANK YOU    "));
+              delay(1000);
+              setReady();
               #endif
     
               DMSG("\nSuccess");
@@ -585,44 +625,11 @@ void doHCE(){
             }
             
             a = a + 1;
-            delay(100);
+            delay(50);
             
          }while( a < 20 );
         
-//        do {
-//  
-//          memset(response, 0, sizeof(response));
-//          
-//          success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), response, &responseLength);
-//          
-//          DMSG(F("Android response #3: ("));
-//          DMSG(responseLength);
-//          DMSG(") ");
-//          nfc.PrintHexChar(response, responseLength);
-//
-//        
-//          if(success && responseLength > 2 && response[0] == '^') {
-//            
-//            response[strlen((char*)&response)-1] = 0x00;
-//            
-//            Serial.println("DONE|" + String((const char*)response));
-//            
-//            #if USING_LCD
-//            clearLcdLine(1);
-//            lcd.setCursor(0,0);
-//            lcd.print(F("PAYMENT SUCCESS "));
-//            lcd.setCursor(0,1);
-//            lcd.print(F("   THANK YOU    "));
-//            #endif
-//  
-//            DMSG("\nSuccess");
-//            //get out from loop
-//            success = false;
-//          }
-//          else {
-//            DMSG(F("Broken connection?\n"));
-//          }
-//        }while(success);
+
       }
       else {
        
