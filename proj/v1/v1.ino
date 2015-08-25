@@ -279,167 +279,167 @@ void clearLcdLine(int num){
 #endif
 #endif // TEST_SNEP || TEST_HCE
 
-#if TEST_SNEP
-void doSNEP(){
-#if 1
-
-  if (isToPay()){
-    
-    retry = true;
-    
-    char buf[64];
-    memset(&buf, 0, 64);
-    
-    for (uint8_t i = 0; Serial.available() > 0; i++){
-      buf[i] = Serial.read();
-    }
-    
-    #if USING_LCD
-    lcd.setCursor(0,0);
-    lcd.print(F("Total (IDR):    "));
-    clearLcdLine(1);
-    lcd.setCursor(0,1);
-    lcd.print("Rp. ");
-    lcd.setCursor(4,1);
-    lcd.print(buf);
-    #endif
-    
-    uint32_t retried = 0;
-    
-    while (retry && retried < 10){
-      DMSG(retried + 1);DMSG(". ");
-      DMSG(F("Send a message to Android: "));
-      DMSG(buf);
-      
-      #if USING_LCD
-      lcd.setCursor(15,1);
-      if (retried % 2 == 0){
-        lcd.print("*");
-      }else{
-        lcd.print(" ");
-      }
-      #endif
-
-      NdefMessage message = NdefMessage();
-    
-      char tmp[64];
-      sprintf(tmp, "http://xipp.info?r=%s", buf);
-    
-      message.addUriRecord(String(tmp));
-      
-      int messageSize = message.getEncodedSize();
-      if (messageSize > sizeof(ndefBuf)) {
-          MSGERROR(F("ndefBuf is too small\n"));
-          while (1) {
-          }
-  
-      }
-  
-      message.encode(ndefBuf);
-      int8_t rv = nfc.write(ndefBuf, messageSize, 5000);
-      if (0 >= rv) {
-        retry = true;
-        retried++;
-        MSGERROR(F(" Failed, ret: "));
-        MSGPRINT(rv);NL;
-        
-        
-        if (rv < -1){
-          #if USING_LCD
-          lcd.setCursor(0,1);
-          lcd.print("...PROCESSING...");
-          #endif
-          #if USING_LED
-          dim_led(9, 5);
-          #endif
-        }
-        
-        
-        
-        delay(700);
-      } else {
-        retry = false;
-        Serial.println(F("SUCCESS"));
-        
-        // temporary send dummy ack
-        //
-        delay(2000);
-        
-        // dapatkan data dari opposite PN532
-        memset(&ndefBuf, 0, 128);
-        
-        int msgSize = nfc.read(ndefBuf, 128, 60000);
-        if (msgSize > 0) {
-            NdefMessage msg = NdefMessage(ndefBuf, msgSize);
-            //msg.print();
-
-            byte payload[256];
-            memset(&payload, 0, 250);
-            
-            msg.getRecord(0).getPayload((byte*)&payload);
-            
-            Serial.println("DONE|" + String((const char*)&payload));
-            
-
-            //Serial.print((char*)&payload);
-            //Serial.println();
-            
-            #if USING_LCD
-            clearLcdLine(1);
-            lcd.setCursor(0,0);
-            lcd.print(F("PAYMENT SUCCESS "));
-            lcd.setCursor(0,1);
-            lcd.print(F("   THANK YOU    "));
-            #endif
-            
-            DMSG("\nSuccess");
-            delay(3000);
-        } else {
-            MSGERROR("nfc read return: ");
-            MSGPRINT(msgSize);
-            MSGPRINT(F("Failed code 405\n"));
-        }
-
-        
-        
-        delay(10000);
-        #if USING_LCD
-        lcd.setCursor(0,1);
-        clearLcdLine(1);
-        lcd.setCursor(0,0);
-        lcd.print("~ XIPP READY   ");
-        clearLcdLine(1);
-        #endif
-      }
-    }
-    if (retried >= 7){
-      DMSG(F("timeout."));
-      #if USING_LCD
-      lcd.setCursor(0,0);
-      lcd.print("~ XIPP READY   ");
-      clearLcdLine(1);
-      lcd.setCursor(0,1);
-      lcd.print("timeout.");
-      #endif
-    }
-    
-    
-  }
-
-#else
-    DMSG(F("Get a message from Android"));
-    int msgSize = nfc.read(ndefBuf, sizeof(ndefBuf), 3000);
-    if (msgSize > 0) {
-        NdefMessage msg  = NdefMessage(ndefBuf, msgSize);
-        msg.print();
-        DMSG("\nSuccess");
-        delay(3000);
-    } else {
-        MSGPRINT(F("failed\n"));
-    }
-#endif
-}
-#endif
+//#if TEST_SNEP
+//void doSNEP(){
+//#if 1
+//
+//  if (isToPay()){
+//    
+//    retry = true;
+//    
+//    char buf[64];
+//    memset(&buf, 0, 64);
+//    
+//    for (uint8_t i = 0; Serial.available() > 0; i++){
+//      buf[i] = Serial.read();
+//    }
+//    
+//    #if USING_LCD
+//    lcd.setCursor(0,0);
+//    lcd.print(F("Total (IDR):    "));
+//    clearLcdLine(1);
+//    lcd.setCursor(0,1);
+//    lcd.print("Rp. ");
+//    lcd.setCursor(4,1);
+//    lcd.print(buf);
+//    #endif
+//    
+//    uint32_t retried = 0;
+//    
+//    while (retry && retried < 10){
+//      DMSG(retried + 1);DMSG(". ");
+//      DMSG(F("Send a message to Android: "));
+//      DMSG(buf);
+//      
+//      #if USING_LCD
+//      lcd.setCursor(15,1);
+//      if (retried % 2 == 0){
+//        lcd.print("*");
+//      }else{
+//        lcd.print(" ");
+//      }
+//      #endif
+//
+//      NdefMessage message = NdefMessage();
+//    
+//      char tmp[64];
+//      sprintf(tmp, "http://xipp.info?r=%s", buf);
+//    
+//      message.addUriRecord(String(tmp));
+//      
+//      int messageSize = message.getEncodedSize();
+//      if (messageSize > sizeof(ndefBuf)) {
+//          MSGERROR(F("ndefBuf is too small\n"));
+//          while (1) {
+//          }
+//  
+//      }
+//  
+//      message.encode(ndefBuf);
+//      int8_t rv = nfc.write(ndefBuf, messageSize, 5000);
+//      if (0 >= rv) {
+//        retry = true;
+//        retried++;
+//        MSGERROR(F(" Failed, ret: "));
+//        MSGPRINT(rv);NL;
+//        
+//        
+//        if (rv < -1){
+//          #if USING_LCD
+//          lcd.setCursor(0,1);
+//          lcd.print("...PROCESSING...");
+//          #endif
+//          #if USING_LED
+//          dim_led(9, 5);
+//          #endif
+//        }
+//        
+//        
+//        
+//        delay(700);
+//      } else {
+//        retry = false;
+//        Serial.println(F("SUCCESS"));
+//        
+//        // temporary send dummy ack
+//        //
+//        delay(2000);
+//        
+//        // dapatkan data dari opposite PN532
+//        memset(&ndefBuf, 0, 128);
+//        
+//        int msgSize = nfc.read(ndefBuf, 128, 60000);
+//        if (msgSize > 0) {
+//            NdefMessage msg = NdefMessage(ndefBuf, msgSize);
+//            //msg.print();
+//
+//            byte payload[256];
+//            memset(&payload, 0, 250);
+//            
+//            msg.getRecord(0).getPayload((byte*)&payload);
+//            
+//            Serial.println("DONE|" + String((const char*)&payload));
+//            
+//
+//            //Serial.print((char*)&payload);
+//            //Serial.println();
+//            
+//            #if USING_LCD
+//            clearLcdLine(1);
+//            lcd.setCursor(0,0);
+//            lcd.print(F("PAYMENT SUCCESS "));
+//            lcd.setCursor(0,1);
+//            lcd.print(F("   THANK YOU    "));
+//            #endif
+//            
+//            DMSG("\nSuccess");
+//            delay(3000);
+//        } else {
+//            MSGERROR("nfc read return: ");
+//            MSGPRINT(msgSize);
+//            MSGPRINT(F("Failed code 405\n"));
+//        }
+//
+//        
+//        
+//        delay(10000);
+//        #if USING_LCD
+//        lcd.setCursor(0,1);
+//        clearLcdLine(1);
+//        lcd.setCursor(0,0);
+//        lcd.print("~ XIPP READY   ");
+//        clearLcdLine(1);
+//        #endif
+//      }
+//    }
+//    if (retried >= 7){
+//      DMSG(F("timeout."));
+//      #if USING_LCD
+//      lcd.setCursor(0,0);
+//      lcd.print("~ XIPP READY   ");
+//      clearLcdLine(1);
+//      lcd.setCursor(0,1);
+//      lcd.print("timeout.");
+//      #endif
+//    }
+//    
+//    
+//  }
+//
+//#else
+//    DMSG(F("Get a message from Android"));
+//    int msgSize = nfc.read(ndefBuf, sizeof(ndefBuf), 3000);
+//    if (msgSize > 0) {
+//        NdefMessage msg  = NdefMessage(ndefBuf, msgSize);
+//        msg.print();
+//        DMSG("\nSuccess");
+//        delay(3000);
+//    } else {
+//        MSGPRINT(F("failed\n"));
+//    }
+//#endif
+//}
+//#endif
 
 #if TEST_HCE
 void doHCE(){
@@ -507,21 +507,15 @@ void doHCE(){
         DMSG(F("Android response #1: ("));
         DMSG(responseLength);
         DMSG(") ");
+        #if IS_DEBUG
         nfc.PrintHexChar(response, responseLength);
-        
-        
-        responseLength = 74;
-        memset(response, 0, sizeof(response));
-        
-        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
-        
-        DMSG(F("Android response #2: ("));
-        DMSG(responseLength);
-        DMSG(") ");
-        nfc.PrintHexChar(response, responseLength);
+        #endif
         
         int a = 1;
         responseLength = 30;
+
+        // MULAI MEMPROSES DATA DARI GUEST (SMARTPHONE)
+        Serial.println("-----BEGIN-----");
         
          /* do loop execution */
          do
@@ -533,17 +527,47 @@ void doHCE(){
             DMSG(F("Android response #3: ("));
             DMSG(responseLength);
             DMSG(") ");
+            #if IS_DEBUG
             nfc.PrintHexChar(response, responseLength);
+            #endif
 
             DMSG(F("value of a:"));
             DMSG(a);
             DMSG("\n");
+
+
+            char respBuff[responseLength];
+
+            // send to host
+            int ii = 0;
+            for(int i=0; i < responseLength; i++){
+              if (response[i] == 0x00){
+                continue;
+              }
+              if (response[i] == 0xFF){
+                if (i > 1 && response[i-1] == 0xFF){
+                  break;
+                }
+              }
+              if (response[i] == 0x90){
+                // EOF
+                ii++;
+                break;
+              }
+              respBuff[ii++] = response[i];
+            }
+            respBuff[ii-1] = 0x00;
+            String responseString = String((const char*)respBuff);
+            Serial.print(responseString);
             
-            if(response[1] == '^' || response[0] == '^') {
+            if(responseString.indexOf("^END") > -1) {
               
-              response[strlen((char*)&response)-1] = 0x00;
+              //response[strlen((char*)&response)-1] = 0x00;
               
-              Serial.println("DONE|" + String((const char*)response));
+              //Serial.println("DONE|" + String((const char*)response));
+
+              Serial.print("\r\n");
+              Serial.println("-----END-----");
               
               #if USING_LCD
               clearLcdLine(1);
@@ -554,8 +578,10 @@ void doHCE(){
               #endif
     
               DMSG("\nSuccess");
+              
               //get out from loop
               a = a + 20;
+              break;
             }
             
             a = a + 1;
