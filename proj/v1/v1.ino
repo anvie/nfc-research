@@ -510,15 +510,15 @@ void doHCE(){
         nfc.PrintHexChar(response, responseLength);
         
         
-//        responseLength = 74;
-//        memset(response, 0, sizeof(response));
-//        
-//        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
-//        
-//        DMSG(F("Android response #2: ("));
-//        DMSG(responseLength);
-//        DMSG(") ");
-//        nfc.PrintHexChar(response, responseLength);
+        responseLength = 74;
+        memset(response, 0, sizeof(response));
+        
+        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
+        
+        DMSG(F("Android response #2: ("));
+        DMSG(responseLength);
+        DMSG(") ");
+        nfc.PrintHexChar(response, responseLength);
         
         int a = 1;
         responseLength = 30;
