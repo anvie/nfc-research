@@ -55,11 +55,11 @@ LiquidCrystal lcd(15, 14, 16, 4, 5, 6, 7);
 // RXD            -->      Serial1-TX
 // TXD            -->      Serail1-RX
 /** Serial1 can be  */
-#if UNO
+if UNO
     PN532_HSU pn532(Serial);
-#else
+else
     PN532_HSU pn532(Serial1);
-#endif
+endif
 
 #if TEST_SNEP
     SNEP nfc(pn532);
@@ -427,10 +427,10 @@ void doHCE(){
                                 0x07, /* Length of AID  */
                                 0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06//, /* AID defined on Android App */
                                 /*0xF0 // Le  */};
-      uint8_t getDataApdu[] = {0x00, 0xCA, 0x00, 0x00, 
+      uint8_t getDataApdu[] = {0x00, 0xCA, 0x00, 
                                0x00, 
-                               0x00,
-                               0x28};
+                               0x0F,
+                               0xFF};
        
       success = nfc.inDataExchange(selectApdu, sizeof(selectApdu), response, &responseLength);
       
@@ -445,27 +445,39 @@ void doHCE(){
         
         responseLength = 74;
         memset(response, 0, sizeof(response));
+        uint8_t back3[74];
+        uint8_t length3 = 74;
         
-        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), response, &responseLength);
+        success = nfc.inDataExchange((uint8_t*)&buf, strlen(buf), back3, &length3);
         
         DMSG(F("Android response #2: ("));
-        DMSG(responseLength);
+        DMSG(sizeof(back3));
         DMSG(") ");
-        nfc.PrintHexChar(response, responseLength);
+        nfc.PrintHexChar(back3, sizeof(back3));
+        
         
         do {
-  
-          memset(response, 0, sizeof(response));
+          uint8_t back[47];
+          uint8_t length = 47;
+          memset(back, 0, sizeof(back));
           
-          success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), response, &responseLength);
+          success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), back, &length);
           
           DMSG(F("Android response #3: ("));
-          DMSG(responseLength);
+          DMSG(length);
           DMSG(") ");
-          nfc.PrintHexChar(response, responseLength);
+          nfc.PrintHexChar(back, length);
+          
+          if(success) {
+            DMSG("\nSukses");
+            DMSG(back[0]);
+            DMSG("\n");
+          } else {
+            DMSG(F("\nBroke"));
+          }
 
         
-          if(success && responseLength > 2 && response[0] == '^') {
+          if(success && responseLength > 2 && back[0] == '^') {
             
             response[strlen((char*)&response)-1] = 0x00;
             
@@ -483,7 +495,8 @@ void doHCE(){
             //get out from loop
             success = false;
           }
-          else {
+          
+          if (!success) {
             DMSG(F("Broken connection?\n"));
           }
         }while(success);
