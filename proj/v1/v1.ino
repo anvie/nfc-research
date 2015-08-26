@@ -16,7 +16,7 @@
 
 #define UNO                0
 #define USING_I2C          1
-#define IS_DEBUG           1
+#define IS_DEBUG           0
 #define VERSION_CHECKER    1
 #define TEST_TAG           0
 #define TEST_WRITE_TAG     0 // need TEST_TAG
@@ -506,6 +506,8 @@ void doHCE(){
       error_then_reset(F("TIMEOUT"));
       return;
     }
+
+    delay(100);
    
     DMSG(F("Found something!\n"));
                   
@@ -523,185 +525,183 @@ void doHCE(){
      
     success = nfc.inDataExchange(selectApdu, sizeof(selectApdu), response, &responseLength);
     
-    if(success) {
+    if(!success) {
+      DMSG(F("Failed sending SELECT AID\n"));
+      error_then_reset(F("CONN LOST 1"));
+      return;
+    }
 
-      #if USING_LED
-      dim_led(LED_PIN, 3);
-      #endif
 
-      delay(100);
-      
-      DMSG(F("Android response #1: ("));
-      DMSG(responseLength);
-      DMSG(") ");
-      #if IS_DEBUG
-      nfc.PrintHexChar(response, responseLength);
-      #endif
+    #if USING_LED
+    dim_led(LED_PIN, 3);
+    #endif
 
-      responseLength = 74;
-      memset(response, 0, sizeof(response));
+    delay(100);
+    
+    DMSG(F("Android response #1: ("));
+    DMSG(responseLength);
+    DMSG(") ");
+    #if IS_DEBUG
+    nfc.PrintHexChar(response, responseLength);
+    #endif
 
-      DMSG(F("Sending to guest with length "));
-      DMSG(strlen(buf));
-      DMSG(":\n");
-      DMSG(buf);
-      DMSG("\n");
+    responseLength = 74;
+    memset(response, 0, sizeof(response));
 
-      int len = strlen(buf);
+    DMSG(F("Sending to guest with length "));
+    DMSG(strlen(buf));
+    DMSG(":\n");
+    DMSG(buf);
+    DMSG("\n");
 
-      if (len < 24){
-          success = nfc.inDataExchange((uint8_t*)&buf, len, response, &responseLength);  
-      }else{
-          DMSG(F("data is more than 24 bytes, "));
-          DMSG(len);
-          DMSG(F(", chunking for "));
-          int loopCount = len / 23;
-          size_t remainBytesCount = len % 23;
-          DMSG(loopCount);
-          DMSG(F(" chunks\n"));
-          int i=0;
-          for (i=0; i<loopCount; i++){
-            uint8_t* chunk = (uint8_t*)&buf[i * 23];
-            DMSG("chunk ");
-            DMSG(i + 1);
-            DMSG("\n");
+    int len = strlen(buf);
+
+    if (len < 24){
+        success = nfc.inDataExchange((uint8_t*)&buf, len, response, &responseLength);  
+    }else{
+        DMSG(F("data is more than 24 bytes, "));
+        DMSG(len);
+        DMSG(F(", chunking for "));
+        int loopCount = len / 23;
+        size_t remainBytesCount = len % 23;
+        DMSG(loopCount);
+        DMSG(F(" chunks\n"));
+        int i=0;
+        for (i=0; i<loopCount; i++){
+          uint8_t* chunk = (uint8_t*)&buf[i * 23];
+          DMSG("chunk ");
+          DMSG(i + 1);
+          DMSG("\n");
 //              size_t sz = strlen((const char*)chunk);
 //              if (sz > 23){
 //                sz = 23;
 //              }
-            success = nfc.inDataExchange(chunk, 23, response, &responseLength);  
-          }
-          // kirim sisanya
-          //size_t = sz = strlen((const char*)chunk);
-          if (remainBytesCount > 0){
-            uint8_t* chunk = (uint8_t*)&buf[i * 23];
-            success = nfc.inDataExchange(chunk, remainBytesCount, response, &responseLength);
-          }
-      }
+          success = nfc.inDataExchange(chunk, 23, response, &responseLength);  
+        }
+        // kirim sisanya
+        //size_t = sz = strlen((const char*)chunk);
+        if (remainBytesCount > 0){
+          uint8_t* chunk = (uint8_t*)&buf[i * 23];
+          success = nfc.inDataExchange(chunk, remainBytesCount, response, &responseLength);
+        }
+    }
+    
+    // kirim penanda kalau sudah selesai
+    success = nfc.inDataExchange(END_OF_DATA, 2, response, &responseLength);
+    
+    
+    DMSG(F("Android response #2: ("));
+    DMSG(responseLength);
+    DMSG(") ");
+    #if IS_DEBUG
+    nfc.PrintHexChar(response, responseLength);
+    #endif
+
+    // apabila return-nya 0x01,0x00 berarti guest mati, maka perlu keluar.
+    if (response[0] == 0x01 && response[1] == 0x00){
+      error_then_reset(F("CONN LOST 2"));
+      return;
+    }
+
+    delay(100);
+    
+    int a = 1;
+    responseLength = 30;
+
+    // MULAI MEMPROSES DATA DARI GUEST (SMARTPHONE)
+    Serial.println("-----BEGIN-----");
+    
+    /* do loop execution */
+    do
+    {
+    
+      #if USING_LED
+      dim_led(LED_PIN, 3);
+      #endif
+    
+      memset(response, 0, sizeof(response));
+    
+      success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), response, &responseLength);
       
-      // kirim penanda kalau sudah selesai
-      success = nfc.inDataExchange(END_OF_DATA, 2, response, &responseLength);
-      
-      
-      DMSG(F("Android response #2: ("));
+      DMSG(F("Android response #3: ("));
       DMSG(responseLength);
       DMSG(") ");
       #if IS_DEBUG
       nfc.PrintHexChar(response, responseLength);
       #endif
-
+    
       // apabila return-nya 0x01,0x00 berarti guest mati, maka perlu keluar.
       if (response[0] == 0x01 && response[1] == 0x00){
-        error_then_reset(F("CONN LOST 1"));
+        error_then_reset(F("CONN LOST 3"));
         return;
       }
-
-      delay(100);
-      
-      int a = 1;
-      responseLength = 30;
-
-      // MULAI MEMPROSES DATA DARI GUEST (SMARTPHONE)
-      Serial.println("-----BEGIN-----");
-      
-       /* do loop execution */
-       do
-       {
-
-          #if USING_LED
-          dim_led(LED_PIN, 3);
-          #endif
-        
-          memset(response, 0, sizeof(response));
-      
-          success = nfc.inDataExchange(getDataApdu, sizeof(getDataApdu), response, &responseLength);
-          
-          DMSG(F("Android response #3: ("));
-          DMSG(responseLength);
-          DMSG(") ");
-          #if IS_DEBUG
-          nfc.PrintHexChar(response, responseLength);
-          #endif
-
-          // apabila return-nya 0x01,0x00 berarti guest mati, maka perlu keluar.
-          if (response[0] == 0x01 && response[1] == 0x00){
-            error_then_reset(F("CONN LOST 2"));
-            return;
-          }
-
-          DMSG(F("value of a:"));
-          DMSG(a);
-          DMSG("\n");
-
-
-          char respBuff[responseLength];
-
-          // send to host
-          int ii = 0;
-          for(int i=0; i < responseLength; i++){
-            if (response[i] == 0x00){
-              continue;
-            }
-            if (response[i] == 0xFF){
-              if (i > 1 && response[i-1] == 0xFF){
-                break;
-              }
-            }
-            if (response[i] == 0x90){
-              // EOF
-              ii++;
-              break;
-            }
-            respBuff[ii++] = response[i];
-          }
-          respBuff[ii-1] = 0x00;
-          String responseString = String((const char*)respBuff);
-
-          bool ending = responseString.indexOf("^END") > -1;
-
-          if(ending) {
-            Serial.println(responseString);
-          }else{
-            Serial.print(responseString);
-          }
-          
-          if(ending) {
-
-            delay(100);
-
-            Serial.flush();
-            Serial.println("-----END-----");
-            Serial.flush();
-            
-            #if USING_LCD
-            clearLcdLine(1);
-            lcd.setCursor(0,0);
-            lcd.print(F("PAYMENT SUCCESS "));
-            lcd.setCursor(0,1);
-            lcd.print(F("   THANK YOU    "));
-            delay(1000);
-            setReady();
-            #endif
-  
-            DMSG("\nSuccess");
-            
-            //get out from loop
-            a = a + 20;
+    
+      DMSG(F("value of a:"));
+      DMSG(a);
+      DMSG("\n");
+    
+    
+      char respBuff[responseLength];
+    
+      // send to host
+      int ii = 0;
+      for(int i=0; i < responseLength; i++){
+        if (response[i] == 0x00){
+          continue;
+        }
+        if (response[i] == 0xFF){
+          if (i > 1 && response[i-1] == 0xFF){
             break;
           }
-          
-          a = a + 1;
-          delay(50);
-          
-       }while( a < 20 );
+        }
+        if (response[i] == 0x90){
+          // EOF
+          ii++;
+          break;
+        }
+        respBuff[ii++] = response[i];
+      }
+      respBuff[ii-1] = 0x00;
+      String responseString = String((const char*)respBuff);
+    
+      bool ending = responseString.indexOf("^END") > -1;
+    
+      if(ending) {
+        Serial.println(responseString);
+      }else{
+        Serial.print(responseString);
+      }
       
+      if(ending) {
+    
+        delay(100);
+    
+        Serial.flush();
+        Serial.println("-----END-----");
+        Serial.flush();
+        
+        #if USING_LCD
+        clearLcdLine(1);
+        lcd.setCursor(0,0);
+        lcd.print(F("PAYMENT SUCCESS "));
+        lcd.setCursor(0,1);
+        lcd.print(F("   THANK YOU    "));
+        delay(1000);
+        setReady();
+        #endif
+    
+        DMSG("\nSuccess");
+        
+        //get out from loop
+        a = a + 20;
+        break;
+      }
+      
+      a = a + 1;
+      delay(50);
+      
+    }while( a < 20 );
 
-    }
-    else {
-     
-      DMSG(F("Failed sending SELECT AID\n"));
-    }
-     
     
   
     delay(1000);
