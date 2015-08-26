@@ -185,15 +185,18 @@ void setup(void) {
 
 void setReady(){
   clearLcd();
+  lcd.setCursor(0,0);
   lcd.print("~  XIPP READY  ~");
 }
 
+void clearLcdLine(int num){
+  lcd.setCursor(0,num);
+  lcd.print(F("                "));
+}
+
 void clearLcd(){
-  lcd.setCursor(0,0);
-  lcd.print(F("                "));
-  lcd.setCursor(0,1);
-  lcd.print(F("                "));
-  lcd.setCursor(0,0);
+  clearLcdLine(0);
+  clearLcdLine(1);
 }
 #endif
 
@@ -270,12 +273,6 @@ bool isToPay(){
   return false;
 } 
 
-#if USING_LCD
-void clearLcdLine(int num){
-  lcd.setCursor(0,num);
-  lcd.print(F("                "));
-}
-#endif
 #endif // TEST_SNEP || TEST_HCE
 
 //#if TEST_SNEP
@@ -443,13 +440,24 @@ void clearLcdLine(int num){
 #if TEST_HCE
 static uint8_t END_OF_DATA[] = {0x90, 0x90};
 
+uint8_t response[74];
+uint8_t responseLength = 32;
+
+void error_then_reset(String text){
+  DMSG(F("error then reset"));
+  #if USING_LCD
+  clearLcdLine(1);
+  lcd.setCursor(0, 1);
+  lcd.print(text);
+  delay(5000);
+  setReady();
+  #endif
+}
+
 void doHCE(){
 
   if (isToPay()) {
     bool success;
-
-    uint8_t response[74];
-    uint8_t responseLength = 32;
 
     //get payment data from serial
     char buf[80];
@@ -495,14 +503,11 @@ void doHCE(){
   
     if(!success) {
       DMSG(F("Didn't find anything!\n"));
-      lcd.setCursor(0, 1);
-      lcd.print(F("TIMEOUT"));
-      delay(500);
-      setReady();
+      error_then_reset(F("TIMEOUT"));
       return;
     }
    
-     DMSG(F("Found something!\n"));
+    DMSG(F("Found something!\n"));
                   
     uint8_t selectApdu[] = { 0x00, /* CLA */
                               0xA4, /* INS */
@@ -585,6 +590,12 @@ void doHCE(){
       nfc.PrintHexChar(response, responseLength);
       #endif
 
+      // apabila return-nya 0x01,0x00 berarti guest mati, maka perlu keluar.
+      if (response[0] == 0x01 && response[1] == 0x00){
+        error_then_reset(F("CONN LOST 1"));
+        return;
+      }
+
       delay(100);
       
       int a = 1;
@@ -611,6 +622,12 @@ void doHCE(){
           #if IS_DEBUG
           nfc.PrintHexChar(response, responseLength);
           #endif
+
+          // apabila return-nya 0x01,0x00 berarti guest mati, maka perlu keluar.
+          if (response[0] == 0x01 && response[1] == 0x00){
+            error_then_reset(F("CONN LOST 2"));
+            return;
+          }
 
           DMSG(F("value of a:"));
           DMSG(a);
