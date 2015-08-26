@@ -563,6 +563,7 @@ void doHCE(){
 
     int len = strlen(buf);
 
+    // mulai proses buffering
     if (len < 24){
         success = nfc.inDataExchange((uint8_t*)&buf, len, response, &responseLength);  
     }else{
@@ -579,14 +580,9 @@ void doHCE(){
           DMSG("chunk ");
           DMSG(i + 1);
           DMSG("\n");
-//              size_t sz = strlen((const char*)chunk);
-//              if (sz > 23){
-//                sz = 23;
-//              }
           success = nfc.inDataExchange(chunk, 23, response, &responseLength);  
         }
         // kirim sisanya
-        //size_t = sz = strlen((const char*)chunk);
         if (remainBytesCount > 0){
           uint8_t* chunk = (uint8_t*)&buf[i * 23];
           success = nfc.inDataExchange(chunk, remainBytesCount, response, &responseLength);
@@ -693,7 +689,7 @@ void doHCE(){
         lcd.print(F("PAYMENT SUCCESS "));
         lcd.setCursor(0,1);
         lcd.print(F("   THANK YOU    "));
-        delay(1000);
+        delay(5500);
         setReady();
         #endif
     
