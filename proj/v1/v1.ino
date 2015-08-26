@@ -438,14 +438,30 @@ bool isToPay(){
 //#endif
 
 #if TEST_HCE
+static uint8_t selectApdu[] = { 0x00, /* CLA */
+                          0xA4, /* INS */
+                          0x04, /* P1  */
+                          0x00, /* P2  */
+                          0x07, /* Length of AID  */
+                          0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06//, /* AID defined on Android App */
+                          /*0xF0 // Le  */};
+
+static uint8_t getDataApdu[] = {0x00, 0xCA, 0x00, 0x00, 
+                         0x00, 
+                         0x00,
+                         0xFF};
+                         
 static uint8_t END_OF_DATA[] = {0x90, 0x90};
 
-uint8_t response[74];
-uint8_t responseLength = 32;
+static uint8_t response[74];
+static uint8_t responseLength = 32;
 
 void error_then_reset(String text){
   DMSG(F("error then reset"));
   #if USING_LCD
+  clearLcdLine(0);
+  lcd.setCursor(0, 0);
+  lcd.print(F("ERROR:"));
   clearLcdLine(1);
   lcd.setCursor(0, 1);
   lcd.print(text);
@@ -459,9 +475,12 @@ void doHCE(){
   if (isToPay()) {
     bool success;
 
+    
+    memset(&response, 0, 74);
+    responseLength = 32;
+    
     //get payment data from serial
     char buf[80];
-
     memset(&buf, 0, 80);
 
     size_t n = 0;
@@ -484,7 +503,7 @@ void doHCE(){
     lcd.setCursor(0,1);
     lcd.print("Rp. ");
     lcd.setCursor(4,1);
-    int pipeIndex = 0x00;
+    int pipeIndex = 0;
     for (int i=0;i<n;i++){
       if (buf[i] == '|'){
         pipeIndex = i;
@@ -510,18 +529,6 @@ void doHCE(){
     delay(100);
    
     DMSG(F("Found something!\n"));
-                  
-    uint8_t selectApdu[] = { 0x00, /* CLA */
-                              0xA4, /* INS */
-                              0x04, /* P1  */
-                              0x00, /* P2  */
-                              0x07, /* Length of AID  */
-                              0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06//, /* AID defined on Android App */
-                              /*0xF0 // Le  */};
-    uint8_t getDataApdu[] = {0x00, 0xCA, 0x00, 0x00, 
-                             0x00, 
-                             0x00,
-                             0xFF};
      
     success = nfc.inDataExchange(selectApdu, sizeof(selectApdu), response, &responseLength);
     
